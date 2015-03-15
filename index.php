@@ -2,14 +2,12 @@
 
 	include 'settings.php';
 	
-	$minfreq = 1;
-	
 	$conn = mysqli_connect($hostname, $username, $passwd, $dbname);
 	if (!$conn) {
 		die("Connection failed: " . mysqli_connect_error());
 	}
 	
-	$sql = "SELECT * FROM Summary JOIN (SELECT COUNT(PathID) AS Count, SumID FROM Path WHERE Frequency > 0 GROUP BY SumID) Path USING (SumID)";
+	$sql = "SELECT * FROM Summary JOIN (SELECT COUNT(PathID) AS Count, SumID, MAX(Frequency) AS MaxFreq FROM Path WHERE Frequency > 0 GROUP BY SumID) Path USING (SumID) WHERE DATE(StartedAt) > '$showFromDate'";
 	
 	$result = $conn->query($sql);
 ?>
@@ -20,7 +18,7 @@
 				th    {color: black; background-color: #eed; font-weight: bold;}
 				table {
 				    border-collapse: collapse;
-				    font-family: Helvetica;
+				    font: 12px Helvetica Neue, Helvetica, Arial, sans-serif;
 				}
 				
 				table, th, td {
@@ -44,12 +42,20 @@
 <?php 
 	
 	while($row = $result->fetch_assoc()) {
-		$url = $visualizerLocation."?sumid=".$row['SumID']."&minfreq=$minfreq";
+		
 		$pathcount = $row['Count'];
 		$dataset = $row['Dataset'];
 		$endpoint = $row['Endpoint'];
 		$timestamp = $row['StartedAt'];
-		if($dataset != "") echo "<tr> <td><a target=\"_parent\" href=\"$url\">$dataset</a></td> <td>$endpoint</td> <td>$pathcount</td> <td>$timestamp</td> </tr>";
+		$maxFreq = $row['MaxFreq'];
+		
+		if($pathcount > $pathCountLimit) $minfreq = $maxFreq * $limitedDetailPercentage * 0.01;
+		else $minfreq = 1;
+		
+		$url = $visualizerLocation."?sumid=".$row['SumID']."&minfreq=$minfreq";
+		
+		if($dataset == "") $dataset = "all available"; 
+			echo "<tr> <td><a target=\"_parent\" href=\"$url\">$dataset</a></td> <td>$endpoint</td> <td>$pathcount</td> <td>$timestamp</td> </tr>";
 	};
 
 ?>

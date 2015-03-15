@@ -47,6 +47,8 @@
 			if(!($prefixIndex === false)) return $this->prefixes[$prefixIndex];
 			
 			$url = "http://prefix.cc/reverse?uri=".urlencode($namespaceUri)."&format=json";
+			
+			/*
 			$req = new \http\Client\Request('GET', $url);
 			$req->setOptions(["timeout"=>10, "redirect" => 10]);
 			$client = (new \http\Client())
@@ -54,7 +56,18 @@
 				->send();
 			$resp = $client->getResponse();
 			$code = $resp->getResponseCode();
-			$content = $resp->getBody();
+			$content = $resp->getBody();*/
+			
+			$ch = curl_init();			
+			// set url
+			curl_setopt($ch, CURLOPT_URL, $url);			
+			//return the transfer as a string
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+			// $output contains the output string
+			$content = curl_exec($ch);			
+			// close curl resource to free up system resources
+			curl_close($ch);
 			
 			$ccprefixes = json_decode($content);
 			if($ccprefixes!=null) {
@@ -94,8 +107,9 @@
 		public $end;
 		public $label;
 		public $fromCSet;
+		public $frequency;
 		
-		function __construct($ent_store, $start, $label, $end, $fromCSet = false) {
+		function __construct($ent_store, $start, $label, $end, $fromCSet = false, $frequency = 1) {
 			$this->start = $ent_store->getIndex($start);
 			$this->end = $ent_store->getIndex($end);
 			
@@ -103,6 +117,7 @@
 			
 			$this->label = $label;
 			$this->fromCSet = $fromCSet;
+			$this->frequency = $frequency;
 		}
 		
 		function equals($ent_store, $start, $label, $end) {
@@ -127,7 +142,7 @@
 			$this->skipEntities = $skipEntities;	
 		}
 		
-		function addLink($start, $label, $end, $csetlink = false) {
+		function addLink($start, $label, $end, $csetlink = false, $frequency = 1) {
 			$existing = false;
 			foreach($this->skipEntities as $entity) {
 				if($label->name == $entity[1] && $label->prefix == $entity[0]) $existing = true;
@@ -137,12 +152,21 @@
 					if($link->equals($this->ent_store, $start, $label, $end)) $existing = true;
 				}
 			}
-			if(!$existing) $this->links[] = new Link($this->ent_store, $start, $label, $end, $csetlink);
+			if($csetlink) {
+				$startsInPath = false;
+				foreach($this->entities as $entity) {
+					if(!$entity->fromCSet && $entity->id == $start->id) $startsInPath = true;
+				}
+				if(!$startsInPath) $existing = true;
+			}
+			if(!$existing) $this->links[] = new Link($this->ent_store, $start, $label, $end, $csetlink, $frequency);
 		}
 	}
 	
 	$sumid = $_REQUEST["sumid"];
+	if(!is_numeric($sumid)) die("sumid param has to be a number");
 	$minFreq = $_REQUEST["minfreq"];
+	if(!is_numeric($minFreq)) die("minFreq param has to be a number");
 	
 	$conn = mysqli_connect($hostname, $username, $passwd, $dbname);
 	if (!$conn) {
@@ -151,7 +175,8 @@
 	
 	$sql = "SELECT Subject_EntityID, Subj.EntityName AS SubjEntityName, SubjPref.URI AS SubjPrefURI, 
 				Predicate_EntityID,Pred.EntityName as PredEntityName, PredPref.URI as PredPrefURI, 
-				Object_EntityID, Obj.EntityName AS ObjEntityName, ObjPref.URI AS ObjPrefURI
+				Object_EntityID, Obj.EntityName AS ObjEntityName, ObjPref.URI AS ObjPrefURI,
+				Frequency
 				FROM Path JOIN PathTriplet USING(PathID) 
 			JOIN Entity AS Subj ON PathTriplet.Subject_EntityID = Subj.EntityID 
 			JOIN Prefix AS SubjPref ON Subj.PrefixID = SubjPref.PrefixID
@@ -165,11 +190,16 @@
 	$result = $conn->query($sql);
 	
 	$graph = new Graph($skipEntities);
+	
+	$maxFrequency = 0;
 	while($row = $result->fetch_assoc()) {
 		$graph->addLink(
 				new Entity($row['Subject_EntityID'], $row['SubjEntityName'], $row['SubjPrefURI']), 
 				new Entity($row['Predicate_EntityID'], $row['PredEntityName'], $row['PredPrefURI']), 
-				new Entity($row['Object_EntityID'], $row['ObjEntityName'], $row['ObjPrefURI']) );
+				new Entity($row['Object_EntityID'], $row['ObjEntityName'], $row['ObjPrefURI']),
+				false,
+				$row['Frequency'] );
+		if($row['Frequency'] > $maxFrequency) $maxFrequency = $row['Frequency'];
 	}
 		
 	//adding characteristic sets results:
@@ -199,11 +229,13 @@
 	
 	
 	$dataset = "";
-	$sql= "SELECT Dataset
+	$endpoint = "";
+	$sql= "SELECT Dataset, Endpoint
 	FROM Summary WHERE SumID = '$sumid'";
 	$result = $conn->query($sql);
 	while($row = $result->fetch_assoc()) {
 		$dataset = $row['Dataset'];
+		$endpoint = $row['Endpoint'];
 	}
 	
 	Class GraphResult {
@@ -211,16 +243,24 @@
 		public $links;
 		public $prefixes;
 		public $dataset;
+		public $endpoint;
+		public $maxFrequency;
 		
-		function __construct($ent, $links, $prefixes, $dataset) {
+		function __construct($ent, $links, $prefixes, $dataset, $endpoint) {
 			$this->entities = $ent;
 			$this->links = $links;
 			$this->prefixes = $prefixes;
 			$this->dataset = $dataset;
+			$this->endpoint = $endpoint;
+		}
+		
+		function setMaxFrequency($freq) {
+			$this->maxFrequency = $freq;
 		}
 	}
 	
-	$graph_result = new GraphResult($graph->entities, $graph->links, $graph->ent_store->getPrefixMappings(), $dataset);
+	$graph_result = new GraphResult($graph->entities, $graph->links, $graph->ent_store->getPrefixMappings(), $dataset, $endpoint);
+	$graph_result->setMaxFrequency($maxFrequency);
 	
 	echo json_encode($graph_result);
 	
