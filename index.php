@@ -27,20 +27,22 @@
 			</style>
 		</head>
 	
-		<table>
-			<tr>
-				<th>
-					Dataset</th>
-				<th>
-					Endpoint</th>
-				<th>
-					Paths Found</th>
-				<th>
-					Timestamp</th>
-			</tr>
+		<form target="_parent" action="<?php echo $visualizerLocation;?>" method="get">
+		<input type="submit" value="Load All Selected Datasets">
+			<table>
+				<tr>
+					<th>
+						Dataset</th>
+					<th>
+						Endpoint</th>
+					<th>
+						Paths Found</th>
+					<th>
+						Timestamp</th>
+				</tr>
 		
 <?php 
-	
+	$minfreqTotal = 1;
 	while($row = $result->fetch_assoc()) {
 		
 		$pathcount = $row['Count'];
@@ -49,15 +51,24 @@
 		$timestamp = $row['StartedAt'];
 		$maxFreq = $row['MaxFreq'];
 		
-		if($pathcount > $pathCountLimit) $minfreq = $maxFreq * $limitedDetailPercentage * 0.01;
+		if($pathcount > $pathCountLimit) {
+			$minfreqTotal = $minfreq = $maxFreq * $limitedDetailPercentage * 0.01;			
+		}
 		else $minfreq = 1;
 		
-		$url = $visualizerLocation."?sumid=".$row['SumID']."&minfreq=$minfreq";
+		$url = $visualizerLocation."?sumid=".$row['SumID']."&minfreq=$minfreq&maxfreq=".PHP_INT_MAX;
 		
 		if($dataset == "") $dataset = "all available"; 
-			echo "<tr> <td><a target=\"_parent\" href=\"$url\">$dataset</a></td> <td>$endpoint</td> <td>$pathcount</td> <td>$timestamp</td> </tr>";
+			echo "<tr> <td>
+				<input type=\"checkbox\" name=\"sumid\" value=\"$row[SumID]\">&nbsp&nbsp
+				<a target=\"_parent\" href=\"$url\">$dataset</a></td> 
+				<td>$endpoint</td> <td>$pathcount</td> <td>$timestamp</td> </tr>";
 	};
 
 ?>
-	</table>
+		</table>
+		<input type="hidden" name="minfreq" value="<?php echo $minfreq;?>">
+		<input type="hidden" name="maxfreq" value="<?php echo PHP_INT_MAX;?>">
+		<input type="submit" value="Load All Selected Datasets">
+	</form>
 	</html>
