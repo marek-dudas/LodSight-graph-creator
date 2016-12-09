@@ -6,8 +6,10 @@
 		public $id;
 		public $selected;
 		
-		function __construct($s, $id, $selected) {
-			$this->str = $s;
+		function __construct($prefix, $namespace, $id, $selected) {
+			$this->str = $prefix.": ".$namespace;
+			$this->prefix = $prefix;
+			$this->namespace = $namespace;
 			$this->id = $id;
 			$this->selected = $selected;
 		}
@@ -129,7 +131,7 @@
 				//$mappings[] = $this->prefixes[$i].": ".$this->namespaces[$i];
 				$selected = false;
 				if($selectedPrefixes!=null) $selected = in_array($this->nsids[$i], $selectedPrefixes);
-				$mappings[] = new NS($this->prefixes[$i].": ".$this->namespaces[$i], $this->nsids[$i], $selected);
+				$mappings[] = new NS($this->prefixes[$i], $this->namespaces[$i], $this->nsids[$i], $selected);
 			}
 			return $mappings;
 		}

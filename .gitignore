@@ -17,3 +17,7 @@ target/
 .classpath
 .project
 .buildpath
+
+#other
+*.jsonld
+*.zip
