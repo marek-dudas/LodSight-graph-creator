@@ -67,7 +67,8 @@
 		private function addEntity($entity) {
 			$entity->setPrefixcc($this->resolvePrefix($entity->prefix));
 			$this->graph->entities[] = $entity;
-			return key($this->graph->entities);
+			return $this->getExistingEntityIndex($entity);
+			//return key($this->graph->entities);
 		}
 		
 		public function addPredicate($predicate) {

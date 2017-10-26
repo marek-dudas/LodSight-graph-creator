@@ -1,13 +1,16 @@
 <?php 
 
+	//dbsettings
 	$hostname = "localhost"; //192.168.1.2
-	$username = "lodsight";
-	$dbname = "lodsight";
-	$passwd = "password"; //
+	$username = "root";
+	$dbname = "lodsight2";
+	$passwd = ""; //	
+
+	//url of lodsight frontend app
+	$visualizerLocation = "http://localhost/lodsight/index.html"; //"http://localhost/lodsight/index.html";
 	
-	$showFromDate = "2014-02-03";
+	$showFromDate = "2017-01-03";
 	
-	$visualizerLocation = "http://localhost/lodsight/index.html"; //"http://localhost/lodsight/index.html"; 
 	//"http://localhost/lodsight%20visualizer/index.html
   //"http://lod2-dev.vse.cz/lodsight/index.html"; 
 	//"file:///C:/Users/user/Dropbox/LODSight/summaryApp/lodsight%20visualizer/index.html";

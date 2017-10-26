@@ -1,0 +1,10 @@
+SELECT DISTINCT path.SumID, prefix.URI FROM prefix JOIN entity USING (PrefixID) JOIN pathtriplet 
+ON entity.EntityID = pathtriplet.Subject_EntityID OR entity.EntityID = pathtriplet.Object_EntityID OR entity.EntityID = pathtriplet.Predicate_EntityID
+JOIN path USING (PathID) WHERE prefix.URI = 'http://schema.org/
+'
+
+SELECT DISTINCT path.SumID, prefix.URI FROM prefix JOIN entity USING (PrefixID) JOIN pathtriplet ON entity.EntityID = pathtriplet.Subject_EntityID OR entity.EntityID = pathtriplet.Object_EntityID OR entity.EntityID = pathtriplet.Predicate_EntityID JOIN path USING (PathID) WHERE prefix.URI = 'http://schema.org/'
+
+SELECT DISTINCT cset.SumID, prefix.URI FROM prefix JOIN entity USING (PrefixID) 
+JOIN setpredicate USING (EntityID) JOIN cset USING (SetID)
+WHERE prefix.URI = 'http://schema.org/'
